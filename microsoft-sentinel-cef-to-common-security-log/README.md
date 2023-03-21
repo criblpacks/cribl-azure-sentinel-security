@@ -182,7 +182,7 @@ This is the first release. It's been mainly tested against Palo Alto and Trend M
 
 
 ## Contact
-To contact us please email kbrunette@cribl.ip and dgleich@cribl.io. 
+To contact us please email kbrunette@cribl.io and dgleich@cribl.io. 
 
 
 ## License
