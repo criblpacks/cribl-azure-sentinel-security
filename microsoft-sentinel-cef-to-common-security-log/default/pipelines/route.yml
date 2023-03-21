@@ -1,0 +1,15 @@
+id: default
+groups: {}
+comments: []
+routes:
+  - id: default
+    name: default
+    final: true
+    disabled: false
+    pipeline: azure_sentinel-common-security-log
+    description: Routes any CEF based logs to the CommonSecurityLog format.
+    clones: []
+    enableOutputExpression: false
+    outputExpression: null
+    filter: _raw.indexOf("CEF:") > -1
+    output: default

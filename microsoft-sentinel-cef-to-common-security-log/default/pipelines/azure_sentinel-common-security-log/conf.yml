@@ -1,0 +1,138 @@
+output: default
+streamtags: []
+groups:
+  g0BNJi:
+    name: Field Extractions
+    index: 0
+asyncFuncTimeout: 1000
+functions:
+  - id: regex_extract
+    filter: "true"
+    disabled: null
+    conf:
+      source: _raw
+      iterations: 100
+      overwrite: false
+      regex: /(?<__header>CEF:(?<cef_version>\d+)\|(?<cef_device_vendor>.*?)(?<!\\)\|(?<cef_device_product>.*?)(?<!\\)\|(?<cef_device_version>.*?)(?<!\\)\|(?<cef_signature_id>.*?)(?<!\\)\|(?<cef_name>.*?)(?<!\\)\|(?<cef_severity>.*?))(?<!\\)\|(?<__message>[\s\S]+)/
+    description: Extract CEF Header
+    groupId: g0BNJi
+  - id: mask
+    filter: "true"
+    disabled: null
+    conf:
+      rules:
+        - matchRegex: /\\\|/
+          replaceExpr: "'|'"
+      fields:
+        - cef_*
+      depth: 5
+    groupId: g0BNJi
+  - id: comment
+    filter: "true"
+    disabled: null
+    conf:
+      comment: Parse k=v pairs
+  - id: serde
+    filter: "true"
+    disabled: false
+    conf:
+      mode: extract
+      type: kvp
+      srcField: _raw
+      cleanFields: false
+      allowedKeyChars: []
+      allowedValueChars: []
+    description: Extract key value pairs from the CEF payload into their own fields.
+  - id: comment
+    filter: "true"
+    disabled: null
+    conf:
+      comment: Next section includes options to optimize data like Drop, Sample,
+        Suppress
+  - id: rename
+    filter: "true"
+    disabled: false
+    conf:
+      wildcardDepth: 5
+      renameExpr: "C.Lookup('cef-to-common-security-log.csv','cefKeyName').match(name\
+        .toLowerCase()) ?
+        C.Lookup('cef-to-common-security-log.csv','cefKeyName').match(name.toLo\
+        werCase(),'CommonSecurityLogName') : name"
+      rename: []
+    description: "Rename the CEF field names to their CommonSecurityLog name by
+      using the cef-to-common-security-log.csv mapping file. "
+  - id: auto_timestamp
+    filter: "true"
+    disabled: null
+    conf:
+      srcField: _raw
+      dstField: _time
+      defaultTimezone: local
+      timeExpression: time.getTime() / 1000
+      offset: 0
+      maxLen: 150
+      defaultTime: now
+      latestDateAllowed: +1week
+      earliestDateAllowed: -420weeks
+    description: Correct timestamps.
+  - id: code
+    filter: DeviceVendor=='Palo Alto Networks'
+    disabled: null
+    conf:
+      maxNumOfIterations: 5000
+      code: >-
+        var AdditionalExtensions = "";
+
+
+        var keyStr = undefined;
+
+        //loop through the objects and assign them to a string called AdditionalExcetions. 
+
+        for (let [key, value] of Object.entries(__e)) {
+            if (key.startsWith('Pan')) {
+                var keyStr = key + "=" + value + ";";
+                AdditionalExtensions += keyStr;
+            }
+        }
+
+        //Remove the last trailing semicolon
+
+        if(keyStr.endsWith(";")) {
+            AdditionalExtensions = AdditionalExtensions.substring(0,AdditionalExtensions.length -1) 
+        }
+
+        //that that puppy into AdditionalExtensions field. 
+
+        __e['AdditionalExtensions'] = AdditionalExtensions;
+    description: If the Device Vendor is "Palo Alto Networks" loop through all
+      fields that start with PAN and append them to a field called
+      "AdditionalEvents".
+  - id: eval
+    filter: "true"
+    disabled: false
+    conf:
+      add:
+        - name: TimeGenerated
+          value: C.Time.strftime(_time,"%Y-%m-%dT%H:%M:%S.%LZ")
+        - name: Type
+          value: "'CommonSecurityLog'"
+      remove:
+        - _raw
+        - message
+        - PanOSDG*
+        - Pan*
+        - cef_version
+        - appname
+        - facility
+        - _time
+    description: Format the TimeGenereated field and add a Type field for Sentinel
+      and remove any unwanted fields.
+  - id: numerify
+    filter: "true"
+    disabled: false
+    conf:
+      format: none
+      ignoreFields: []
+      filterExpr: ""
+      digits: 0
+    description: Convert any number based fields to number for ingestion into Sentinel.

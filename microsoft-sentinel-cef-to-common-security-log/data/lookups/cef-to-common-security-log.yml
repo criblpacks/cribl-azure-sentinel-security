@@ -1,0 +1,4 @@
+size: 3918
+description: "Mappings of CEF to CommonSecurityLog. "
+tags: Azure,Sentinel,CommonSecurityLog,CEF,LEEF
+rows: 136
